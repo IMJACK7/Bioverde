@@ -17,25 +17,25 @@ export default async function ProductsPage() {
   const products = await useCase.execute();
 
   return (
-    <main className="min-h-screen bg-[#f7f9f4] px-6 py-12">
+    <main className="min-h-screen bg-background px-5 py-12 sm:px-6">
       <div className="mx-auto max-w-7xl">
         <header className="mb-10">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#52730E]">
+          <p className="text-sm font-semibold uppercase tracking-widest text-primary">
             Catálogo BioVerde
           </p>
 
-          <h1 className="mt-3 text-4xl font-bold text-gray-900">
+          <h1 className="mt-3 text-4xl font-bold text-earth">
             Nuestros productos
           </h1>
 
-          <p className="mt-3 max-w-2xl text-gray-600">
+          <p className="mt-3 max-w-2xl text-text-secondary">
             Descubre nuestros abonos orgánicos y kits
             de huerto para comenzar a cultivar en casa.
           </p>
         </header>
 
         {products.length === 0 ? (
-          <p className="text-gray-600">
+          <p className="text-text-secondary">
             Todavía no hay productos disponibles.
           </p>
         ) : (

@@ -7,9 +7,7 @@ import { CreateOrderUseCase } from "@/server/modules/orders/application/create-o
 import { PrismaOrderValidationRepository } from "@/server/modules/orders/infrastructure/prisma-order-validation.repository";
 import { PrismaOrderRegistrationRepository } from "@/server/modules/orders/infrastructure/prisma-order-registration.repository";
 
-import type {
-  CreateOrderInput,
-} from "@/server/modules/orders/domain/order.types";
+import type { CreateOrderInput } from "@/server/modules/orders/domain/order.types";
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 const MAX_CART_ITEMS = 50;
@@ -37,6 +35,7 @@ export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text();
 
+    // 1. Limitar el tamaño de la solicitud.
     if (
       new TextEncoder().encode(rawBody).byteLength >
       MAX_REQUEST_BYTES
@@ -47,6 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 2. Interpretar el cuerpo JSON.
     let body: unknown;
 
     try {
@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
 
     const payload = body as Record<string, unknown>;
 
+    // 3. Validar la estructura básica del carrito.
     if (
       !Array.isArray(payload.items) ||
       payload.items.length === 0
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 4. Preparar las dependencias del caso de uso.
     const validator = new ValidateOrderUseCase(
       new PrismaOrderValidationRepository()
     );
@@ -129,19 +131,24 @@ export async function POST(request: NextRequest) {
       registrationRepository
     );
 
+    // 5. Validar y registrar o recuperar el pedido.
     const result = await createOrder.execute(
       payload as unknown as CreateOrderInput
     );
 
+    // 6. Gestionar errores de validación y conflictos.
     if (!result.success) {
       return NextResponse.json(result, {
-        status: 422,
+        status: result.statusCode ?? 422,
       });
     }
 
+    // 7. Responder con el pedido registrado.
+    
     return NextResponse.json(result, {
-      status: 201,
+      status: result.reused ? 200 : 201,
     });
+
   } catch (error) {
     console.error(
       "[POST /api/orders] Error al registrar pedido:",

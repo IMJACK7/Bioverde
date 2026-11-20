@@ -34,16 +34,16 @@ export default async function ProductDetailPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f9f4] px-6 py-12">
+    <main className="min-h-screen bg-background px-5 py-12 sm:px-6">
       <div className="mx-auto max-w-6xl">
         {/* Ruta de navegación */}
         <nav
           aria-label="Ruta de navegación"
-          className="mb-8 text-sm text-gray-600"
+          className="mb-8 text-sm text-text-secondary"
         >
           <Link
             href="/"
-            className="hover:text-[#52730E]"
+            className="transition-colors hover:text-primary"
           >
             Inicio
           </Link>
@@ -52,14 +52,14 @@ export default async function ProductDetailPage({
 
           <Link
             href="/products"
-            className="hover:text-[#52730E]"
+            className="transition-colors hover:text-primary"
           >
             Productos
           </Link>
 
           {" / "}
 
-          <span className="text-gray-900">
+          <span className="text-earth">
             {product.name}
           </span>
         </nav>

@@ -12,29 +12,29 @@ export const metadata: Metadata = {
 
 export default function CartPage() {
   return (
-    <main className="min-h-screen bg-[#f7f9f4] px-5 py-12 md:px-8">
+    <main className="min-h-screen bg-background px-5 py-12 md:px-8">
       <div className="mx-auto max-w-7xl">
         <nav
           aria-label="Ruta de navegación"
-          className="mb-6 text-sm text-gray-500"
+          className="mb-6 text-sm text-text-secondary"
         >
           <Link
             href="/"
-            className="hover:text-[#52730E]"
+            className="transition-colors hover:text-primary"
           >
             Inicio
           </Link>
           <span className="mx-2">/</span>
-          <span className="text-[#52730E]">
+          <span className="font-medium text-primary">
             Carrito
           </span>
         </nav>
 
-        <h1 className="text-3xl font-bold text-gray-900 md:text-4xl">
+        <h1 className="text-3xl font-bold text-earth md:text-4xl">
           Tu carrito de compras
         </h1>
 
-        <p className="mb-10 mt-3 text-gray-600">
+        <p className="mb-10 mt-3 text-text-secondary">
           Revisa los productos y kits que deseas adquirir.
         </p>
 

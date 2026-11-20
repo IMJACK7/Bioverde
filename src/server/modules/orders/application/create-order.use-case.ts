@@ -1,154 +1,57 @@
 
 import type {
   CreateOrderInput,
-  OrderCustomerInput,
   OrderValidationError,
 } from "../domain/order.types";
 
 import type {
-  OrderCustomerData,
   OrderRegistrationRepository,
   RegisteredOrder,
 } from "../domain/order-registration.types";
 
+import { OrderIdempotencyConflictError } from "../domain/order-registration.types";
+
 import { ValidateOrderUseCase } from "./validate-order.use-case";
+
+import { validateCustomer } from "../validation/customer.validation";
+import { validateCartStructure } from "../validation/cart-structure.validation";
+import { isValidIdempotencyKey } from "../validation/idempotency-key.validation";
+
+import { calculateRequestHash } from "../utils/request-hash";
+
+
 
 export type CreateOrderResult =
   | {
       success: true;
       data: RegisteredOrder;
+      /**
+       * Indica si el pedido ya existía.
+       * false: pedido recién creado.
+       * true: pedido recuperado.
+       */
+      reused: boolean;
     }
   | {
       success: false;
       errors: OrderValidationError[];
+      statusCode?: 409;
     };
 
-function validationError(
+function orderError(
   message: string
 ): OrderValidationError {
   return {
-    code: "INVALID_CUSTOMER",
+    code: "INVALID_ORDER",
     message,
   };
 }
 
-function normalizeText(value: unknown): string {
-  return typeof value === "string"
-    ? value.trim().replace(/\s+/g, " ")
-    : "";
-}
-
 /**
- * Comprueba los datos necesarios para
- * coordinar un pedido de BioVerde.
- */
-function validateCustomer(
-  input: unknown
-):
-  | { success: true; data: OrderCustomerData }
-  | { success: false; errors: OrderValidationError[] } {
-  if (
-    !input ||
-    typeof input !== "object" ||
-    Array.isArray(input)
-  ) {
-    return {
-      success: false,
-      errors: [
-        validationError(
-          "Debes proporcionar los datos del cliente."
-        ),
-      ],
-    };
-  }
-
-  const customer = input as Partial<
-    Record<keyof OrderCustomerInput, unknown>
-  >;
-
-  const name = normalizeText(customer.name);
-  const phone = normalizeText(customer.phone);
-  const municipality = normalizeText(
-    customer.municipality
-  );
-  const deliveryAddress = normalizeText(
-    customer.deliveryAddress
-  );
-
-  const notes = normalizeText(customer.notes);
-
-  const errors: OrderValidationError[] = [];
-
-  if (name.length < 3 || name.length > 120) {
-    errors.push(
-      validationError(
-        "El nombre debe tener entre 3 y 120 caracteres."
-      )
-    );
-  }
-
-  if (!/^\+?[0-9\s()-]{7,20}$/.test(phone)) {
-    errors.push(
-      validationError(
-        "Ingresa un número de teléfono válido."
-      )
-    );
-  }
-
-  if (
-    municipality.length < 2 ||
-    municipality.length > 100
-  ) {
-    errors.push(
-      validationError(
-        "El municipio debe tener entre 2 y 100 caracteres."
-      )
-    );
-  }
-
-  if (
-    deliveryAddress.length < 5 ||
-    deliveryAddress.length > 200
-  ) {
-    errors.push(
-      validationError(
-        "La dirección debe tener entre 5 y 200 caracteres."
-      )
-    );
-  }
-
-  if (notes.length > 500) {
-    errors.push(
-      validationError(
-        "Las observaciones no pueden superar 500 caracteres."
-      )
-    );
-  }
-
-  if (errors.length > 0) {
-    return {
-      success: false,
-      errors,
-    };
-  }
-
-  return {
-    success: true,
-    data: {
-      name,
-      phone,
-      municipality,
-      deliveryAddress,
-      ...(notes ? { notes } : {}),
-    },
-  };
-}
-
-/**
- * Coordina la creación de pedidos.
+ * Coordina la creación y recuperación de pedidos.
  *
- * El pedido se registra como PENDING.
- * No se descuenta ni reserva inventario.
+ * Los pedidos nuevos se registran como PENDING.
+ * No se reserva ni descuenta inventario.
  */
 export class CreateOrderUseCase {
   constructor(
@@ -167,15 +70,30 @@ export class CreateOrderUseCase {
       return {
         success: false,
         errors: [
-          {
-            code: "INVALID_ORDER",
-            message: "Los datos del pedido son inválidos.",
-          },
+          orderError(
+            "Los datos del pedido son inválidos."
+          ),
         ],
       };
     }
 
-    // 1. Validar los datos del cliente.
+    // 1. Validar la clave de idempotencia.
+    if (
+      !isValidIdempotencyKey(
+        input.idempotencyKey
+      )
+    ) {
+      return {
+        success: false,
+        errors: [
+          orderError(
+            "La clave de identificación del pedido es inválida."
+          ),
+        ],
+      };
+    }
+
+    // 2. Validar los datos del cliente.
     const customerResult = validateCustomer(
       input.customer
     );
@@ -183,26 +101,93 @@ export class CreateOrderUseCase {
     if (!customerResult.success) {
       return customerResult;
     }
-
-    // 2. Validar el carrito desde PostgreSQL.
-    const orderResult = await this.validator.execute(
+    
+    // 3. Comprobar la estructura del carrito.
+    const cartStructureResult = validateCartStructure(
       input.items
     );
+
+    if (!cartStructureResult.success) {
+      return cartStructureResult;
+    }
+
+
+    // 4. Calcular la huella de la solicitud.
+    const requestHash = calculateRequestHash(
+      customerResult.data,
+      input.items
+    );
+
+    // 5. Buscar un pedido con la misma clave.
+    const existingOrder =
+      await this.registrationRepository.findByIdempotencyKey(
+        input.idempotencyKey
+      );
+
+    if (existingOrder) {
+      if (
+        existingOrder.requestHash === requestHash
+      ) {
+        return {
+          success: true,
+          data: existingOrder.order,
+          reused: true,
+        };
+      }
+
+      return {
+        success: false,
+        statusCode: 409,
+        errors: [
+          orderError(
+            "Esta clave ya fue utilizada para un pedido diferente."
+          ),
+        ],
+      };
+    }
+
+    // 6. Validar los artículos del carrito.
+    const orderResult =
+      await this.validator.execute(input.items);
 
     if (!orderResult.success) {
       return orderResult;
     }
 
-    // 3. Registrar el pedido pendiente.
-    const registeredOrder =
-      await this.registrationRepository.create({
-        customer: customerResult.data,
-        order: orderResult.data,
-      });
+    // 7. Registrar el pedido pendiente.
+    try {
+     
+        const registrationResult =
+          await this.registrationRepository.create({
+            idempotencyKey: input.idempotencyKey,
+            requestHash,
+            customer: customerResult.data,
+            order: orderResult.data,
+          });
 
-    return {
-      success: true,
-      data: registeredOrder,
-    };
+        return {
+          success: true,
+          data: registrationResult.order,
+          reused: registrationResult.reused,
+        };
+
+    } catch (error) {
+      // Misma clave con contenido diferente
+      // durante una solicitud simultánea.
+      if (
+        error instanceof OrderIdempotencyConflictError
+      ) {
+        return {
+          success: false,
+          statusCode: 409,
+          errors: [
+            orderError(error.message),
+          ],
+        };
+      }
+
+      // No ocultar errores inesperados.
+      throw error;
+    }
   }
 }

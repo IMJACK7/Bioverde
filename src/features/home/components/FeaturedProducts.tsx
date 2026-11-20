@@ -21,23 +21,23 @@ export default async function FeaturedProducts() {
   return (
     <section
       aria-labelledby="featured-products-title"
-      className="bg-[#f7f9f4] px-6 py-20"
+      className="bg-surface-muted px-6 py-20"
     >
       <div className="mx-auto max-w-7xl">
         <div className="mb-10 flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-widest text-[#52730E]">
+            <p className="text-sm font-semibold uppercase tracking-widest text-primary">
               Nuestra selección
             </p>
 
             <h2
               id="featured-products-title"
-              className="mt-3 text-3xl font-bold text-gray-900 md:text-4xl"
+              className="mt-3 text-3xl font-bold text-earth md:text-4xl"
             >
               Descubre nuestros productos
             </h2>
 
-            <p className="mt-3 max-w-2xl text-gray-600">
+            <p className="mt-3 max-w-2xl text-text-secondary">
               Cultiva, cuida y nutre tus plantas con
               productos de BioVerde.
             </p>
@@ -45,14 +45,14 @@ export default async function FeaturedProducts() {
 
           <Link
             href="/products"
-            className="rounded-full border border-[#52730E] px-6 py-3 text-sm font-semibold text-[#52730E] transition-colors hover:bg-[#52730E] hover:text-white"
+            className="rounded-full border border-primary px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
           >
             Ver catálogo completo
           </Link>
         </div>
 
         {featuredProducts.length === 0 ? (
-          <p className="text-gray-600">
+          <p className="text-text-secondary">
             Próximamente encontrarás nuestros productos.
           </p>
         ) : (

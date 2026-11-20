@@ -21,17 +21,52 @@ export default function ProductCard({
   featured = false,
 }: ProductCardProps) {
   const productUrl = `/products/${product.slug}`;
-  const isAvailable = product.stock > 0;
+
+  // Los productos con variantes manejan
+  // inventario independiente por presentación.
+  const hasVariants = product.variants.length > 0;
+
+  const availableVariants = hasVariants
+    ? product.variants.filter(
+        (variant) => variant.stock > 0
+      )
+    : [];
+
+  const isAvailable = hasVariants
+    ? availableVariants.length > 0
+    : product.stock > 0;
+
+  // Mostrar el menor precio disponible
+  // entre las variantes activas.
+  const displayPrice = hasVariants
+    ? Math.min(
+        ...product.variants.map(
+          (variant) => variant.price
+        )
+      )
+    : product.price;
+
+  const availabilityText = hasVariants
+    ? isAvailable
+      ? `${availableVariants.length} ${
+          availableVariants.length === 1
+            ? "presentación disponible"
+            : "presentaciones disponibles"
+        }`
+      : "Producto agotado"
+    : isAvailable
+      ? `${product.stock} unidades disponibles`
+      : "Producto agotado";
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-      {/* Imagen del producto */}
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_4px_16px_rgba(48,44,37,0.05)] transition-all duration-300 hover:-translate-y-1 hover:border-sage hover:shadow-[0_14px_32px_rgba(48,44,37,0.12)]">
+      {/* IMAGEN DEL PRODUCTO */}
       <Link
         href={productUrl}
         aria-label={`Ver detalles de ${product.name}`}
-        className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#52730E]"
+        className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#f1f3e9]">
+        <div className="relative aspect-[4/5] w-full overflow-hidden bg-surface-muted">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
@@ -41,63 +76,98 @@ export default function ProductCard({
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div className="flex h-full items-center justify-center">
-              <span className="text-5xl" aria-hidden="true">
+            <div className="flex h-full items-center justify-center bg-primary-light">
+              <span
+                className="text-5xl"
+                aria-hidden="true"
+              >
                 🌱
               </span>
             </div>
           )}
 
+          {/* ETIQUETA DESTACADO */}
           {featured && (
-            <span className="absolute left-4 top-4 rounded-full bg-[#52730E] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+            <span className="absolute left-4 top-4 rounded-full bg-earth px-4 py-1.5 text-xs font-semibold text-white shadow-sm">
               Destacado
+            </span>
+          )}
+
+          {/* ETIQUETA AGOTADO */}
+          {!isAvailable && (
+            <span className="absolute right-4 top-4 rounded-full bg-red-800 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
+              Agotado
             </span>
           )}
         </div>
       </Link>
 
-      {/* Información del producto */}
-      <div className="flex flex-1 flex-col p-6">
-        <h3 className="text-xl font-semibold text-gray-900">
+      {/* INFORMACIÓN DEL PRODUCTO */}
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        {/* DETALLE DECORATIVO */}
+        <div className="mb-4 h-1 w-10 rounded-full bg-terracotta" />
+
+        <h3 className="text-xl font-semibold leading-snug text-earth">
           <Link
             href={productUrl}
-            className="transition-colors hover:text-[#52730E]"
+            className="transition-colors hover:text-primary"
           >
             {product.name}
           </Link>
         </h3>
 
-        <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-relaxed text-gray-600">
+        <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-relaxed text-text-secondary">
           {product.description ??
             "Descubre este producto de BioVerde."}
         </p>
 
-        {/* Precio y disponibilidad */}
+        {/* PRECIO Y DISPONIBILIDAD */}
         <div className="mt-auto pt-5">
-          <p className="text-2xl font-bold text-[#52730E]">
-            {formatPrice(product.price)}
+          {hasVariants && (
+            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-text-secondary">
+              Desde
+            </p>
+          )}
+
+          <p className="text-2xl font-bold tracking-tight text-primary">
+            {formatPrice(displayPrice)}
           </p>
 
-          <p
-            className={`mt-2 text-sm font-medium ${
-              isAvailable
-                ? "text-green-700"
-                : "text-red-600"
-            }`}
-          >
-            {isAvailable
-              ? `${product.stock} unidades disponibles`
-              : "Producto agotado"}
-          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                isAvailable
+                  ? "bg-primary"
+                  : "bg-red-800"
+              }`}
+            />
+
+            <p
+              className={`text-sm font-medium ${
+                isAvailable
+                  ? "text-primary"
+                  : "text-red-800"
+              }`}
+            >
+              {availabilityText}
+            </p>
+          </div>
         </div>
 
-        {/* Botón de navegación */}
+        {/* BOTÓN */}
         <Link
           href={productUrl}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#52730E] px-6 py-3 font-semibold text-white transition-all duration-300 hover:bg-[#3d570a] hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#52730E]"
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-white transition-all duration-300 hover:bg-primary-hover hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           Ver producto
-          <span aria-hidden="true">→</span>
+
+          <span
+            aria-hidden="true"
+            className="transition-transform duration-300 group-hover:translate-x-1"
+          >
+            →
+          </span>
         </Link>
       </div>
     </article>

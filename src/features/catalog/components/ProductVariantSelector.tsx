@@ -5,12 +5,8 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-import type {
-  Product,
-} from "@/server/modules/products/domain/product.repository";
-
+import type { Product } from "@/server/modules/products/domain/product.repository";
 import { useCart } from "@/features/cart/context/CartContext";
-
 import type {
   CartItem,
   CartItemType,
@@ -55,7 +51,6 @@ export default function ProductVariantSelector({
   const currentImage =
     selectedVariant?.imageUrl ?? product.imageUrl;
 
-  // Identificador único por producto y variante.
   const cartItemId = selectedVariant
     ? `product:${product.id}:variant:${selectedVariant.id}`
     : `product:${product.id}`;
@@ -64,9 +59,9 @@ export default function ProductVariantSelector({
     (item) => item.id === cartItemId
   );
 
-  const quantityInCart = existingCartItem?.quantity ?? 0;
+  const quantityInCart =
+    existingCartItem?.quantity ?? 0;
 
-  // Límite local según existencias conocidas.
   const remainingStock = Math.max(
     0,
     currentStock - quantityInCart
@@ -87,26 +82,24 @@ export default function ProductVariantSelector({
       return;
     }
 
-    // Clasificación provisional del artículo.
-    // Los productos con receta se tratan como kits.
     const itemType: CartItemType =
       selectedVariant &&
       selectedVariant.components.length > 0
         ? "PREBUILT_KIT"
         : "PRODUCT";
 
-   const cartItem: CartItem = {
-  id: cartItemId,
-  type: itemType,
-  productId: product.id,
-  variantId: selectedVariant?.id,
-  name: product.name,
-  variantName: selectedVariant?.name,
-  imageUrl: currentImage,
-  unitPrice: currentPrice,
-  quantity,
-  maxStock: currentStock,
-};
+    const cartItem: CartItem = {
+      id: cartItemId,
+      type: itemType,
+      productId: product.id,
+      variantId: selectedVariant?.id,
+      name: product.name,
+      variantName: selectedVariant?.name,
+      imageUrl: currentImage,
+      unitPrice: currentPrice,
+      quantity,
+      maxStock: currentStock,
+    };
 
     addItem(cartItem);
     setQuantity(1);
@@ -119,9 +112,9 @@ export default function ProductVariantSelector({
     quantity <= remainingStock;
 
   return (
-    <div className="grid gap-10 lg:grid-cols-2">
-      {/* Imagen del producto */}
-      <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-white">
+    <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
+      {/* IMAGEN DEL PRODUCTO */}
+      <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-border bg-surface-muted shadow-[0_8px_28px_rgba(48,44,37,0.08)]">
         {currentImage ? (
           <Image
             src={currentImage}
@@ -136,31 +129,34 @@ export default function ProductVariantSelector({
             className="object-cover"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-7xl">
+          <div className="flex h-full items-center justify-center bg-primary-light text-7xl">
             🌱
           </div>
         )}
       </div>
 
-      {/* Información del producto */}
+      {/* INFORMACIÓN DEL PRODUCTO */}
       <div className="flex flex-col justify-center">
-        <p className="text-sm font-semibold uppercase tracking-widest text-[#52730E]">
-          BioVerde
-        </p>
+        <div className="mb-4 flex items-center gap-3">
+          <span className="h-1 w-10 rounded-full bg-terracotta" />
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-earth">
+            BioVerde · Cultiva naturalmente
+          </p>
+        </div>
 
-        <h1 className="mt-4 text-4xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold leading-tight text-earth sm:text-4xl">
           {product.name}
         </h1>
 
-        <p className="mt-5 text-lg leading-relaxed text-gray-600">
+        <p className="mt-5 text-base leading-relaxed text-text-secondary sm:text-lg">
           {product.description ??
             "Conoce este producto de BioVerde."}
         </p>
 
-        {/* Selector de variantes */}
+        {/* SELECTOR DE VARIANTES */}
         {hasVariants && (
           <div className="mt-8">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">
+            <h2 className="mb-3 text-sm font-semibold text-earth">
               Selecciona una opción:
             </h2>
 
@@ -177,10 +173,10 @@ export default function ProductVariantSelector({
                       handleVariantChange(variant.id)
                     }
                     aria-pressed={isSelected}
-                    className={`rounded-full border px-5 py-3 text-sm font-semibold transition-colors ${
+                    className={`rounded-full border px-5 py-3 text-sm font-semibold transition-all duration-200 ${
                       isSelected
-                        ? "border-[#52730E] bg-[#52730E] text-white"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-[#52730E]"
+                        ? "border-primary bg-primary text-white shadow-sm"
+                        : "border-border bg-surface text-earth hover:border-primary hover:bg-primary-light"
                     }`}
                   >
                     {variant.name}
@@ -190,50 +186,75 @@ export default function ProductVariantSelector({
             </div>
 
             {selectedVariant?.description && (
-              <p className="mt-4 text-sm text-gray-600">
+              <p className="mt-4 text-sm leading-relaxed text-text-secondary">
                 {selectedVariant.description}
               </p>
             )}
           </div>
         )}
 
-        {/* Precio */}
-        <p className="mt-8 text-4xl font-bold text-[#52730E]">
-          {formatPrice(currentPrice)}
-        </p>
+        {/* PRECIO */}
+        <div className="mt-8">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            Precio
+          </p>
 
-        {/* Disponibilidad */}
-        <p className="mt-4 text-sm text-gray-600">
-          {currentStock > 0
-            ? `${currentStock} unidades registradas`
-            : "Producto agotado"}
-        </p>
+          <p className="mt-1 text-4xl font-bold tracking-tight text-primary">
+            {formatPrice(currentPrice)}
+          </p>
+        </div>
+
+        {/* DISPONIBILIDAD */}
+        <div className="mt-4 flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={`h-2.5 w-2.5 rounded-full ${
+              currentStock > 0
+                ? "bg-primary"
+                : "bg-red-800"
+            }`}
+          />
+
+          <p
+            className={`text-sm font-medium ${
+              currentStock > 0
+                ? "text-primary"
+                : "text-red-800"
+            }`}
+          >
+            {currentStock > 0
+              ? `${currentStock} unidades registradas`
+              : "Producto agotado"}
+          </p>
+        </div>
 
         {currentStock > 0 && (
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-text-secondary">
             Disponibles para agregar según tu carrito:{" "}
-            {remainingStock}
+            <strong>{remainingStock}</strong>
           </p>
         )}
 
-        {/* Componentes del kit */}
+        {/* COMPONENTES DEL KIT */}
         {selectedVariant &&
           selectedVariant.components.length > 0 && (
-            <section className="mt-8 rounded-2xl border border-green-100 bg-white p-6">
-              <h2 className="text-xl font-bold text-gray-900">
+            <section className="mt-8 rounded-2xl border border-border bg-surface p-6 shadow-sm">
+              <div className="mb-4 h-1 w-10 rounded-full bg-terracotta" />
+
+              <h2 className="text-xl font-bold text-earth">
                 ¿Qué incluye este kit?
               </h2>
 
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-5 space-y-3">
                 {selectedVariant.components.map(
                   (component) => (
                     <li
                       key={component.id}
-                      className="flex items-start gap-3 text-sm text-gray-700"
+                      className="flex items-start gap-3 text-sm text-text-secondary"
                     >
                       <span
                         aria-hidden="true"
-                        className="font-bold text-[#52730E]"
+                        className="font-bold text-primary"
                       >
                         ✓
                       </span>
@@ -249,14 +270,14 @@ export default function ProductVariantSelector({
             </section>
           )}
 
-        {/* Selector de cantidad */}
+        {/* CANTIDAD */}
         <div className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">
+          <h2 className="mb-3 text-sm font-semibold text-earth">
             Cantidad:
           </h2>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-5">
+            <div className="flex items-center gap-3 rounded-full border border-border bg-surface p-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -266,15 +287,16 @@ export default function ProductVariantSelector({
                   setAddedToCart(false);
                 }}
                 disabled={
-                  quantity <= 1 || remainingStock <= 0
+                  quantity <= 1 ||
+                  remainingStock <= 0
                 }
                 aria-label="Reducir cantidad"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-300 text-lg text-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-lg font-semibold text-earth transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40"
               >
                 −
               </button>
 
-              <span className="w-8 text-center font-semibold text-gray-900">
+              <span className="w-8 text-center font-semibold text-earth">
                 {remainingStock > 0 ? quantity : 0}
               </span>
 
@@ -294,15 +316,15 @@ export default function ProductVariantSelector({
                   quantity >= remainingStock
                 }
                 aria-label="Aumentar cantidad"
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-[#52730E] text-lg text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-lg font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
               >
                 +
               </button>
             </div>
 
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-text-secondary">
               Subtotal:{" "}
-              <span className="font-semibold text-gray-900">
+              <span className="font-bold text-earth">
                 {formatPrice(
                   currentPrice *
                     (remainingStock > 0 ? quantity : 0)
@@ -312,13 +334,13 @@ export default function ProductVariantSelector({
           </div>
         </div>
 
-        {/* Acciones */}
+        {/* ACCIONES */}
         <div className="mt-8 space-y-4">
           <button
             type="button"
             onClick={handleAddToCart}
             disabled={!canAddToCart}
-            className="w-full rounded-full bg-[#52730E] px-8 py-4 font-semibold text-white transition-colors hover:bg-[#3d570a] disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-full bg-primary px-8 py-4 font-semibold text-white shadow-sm transition-all duration-300 hover:bg-primary-hover hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
           >
             {remainingStock <= 0
               ? "Sin existencias para agregar"
@@ -328,15 +350,15 @@ export default function ProductVariantSelector({
           {addedToCart && (
             <div
               role="status"
-              className="rounded-xl border border-green-100 bg-[#f7f9f4] p-4 text-center"
+              className="rounded-xl border border-sage bg-primary-light p-4 text-center"
             >
-              <p className="text-sm font-semibold text-[#52730E]">
+              <p className="text-sm font-semibold text-primary">
                 ¡Producto agregado al carrito!
               </p>
 
               <Link
                 href="/cart"
-                className="mt-2 inline-block text-sm font-semibold text-[#52730E] underline"
+                className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-4 hover:text-primary-hover"
               >
                 Ver mi carrito
               </Link>
@@ -345,16 +367,16 @@ export default function ProductVariantSelector({
 
           <Link
             href="/products"
-            className="block text-center text-sm font-semibold text-gray-600 hover:text-[#52730E]"
+            className="block text-center text-sm font-semibold text-earth transition-colors hover:text-primary"
           >
             Volver al catálogo
           </Link>
         </div>
 
-        <p className="mt-6 text-xs text-gray-500">
-          Los precios y las existencias son preliminares.
-          La disponibilidad se verificará antes de
-          confirmar el pedido.
+        <p className="mt-6 text-xs leading-relaxed text-text-secondary">
+          Los precios y las existencias son
+          preliminares. La disponibilidad se
+          verificará antes de confirmar el pedido.
         </p>
       </div>
     </div>

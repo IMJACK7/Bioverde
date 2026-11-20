@@ -169,7 +169,7 @@ export default function KitBuilder({
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
       {/* Catálogo de componentes */}
       <div className="space-y-8">
-        {categories.map((category) => {
+        {categories.map((category, index) => {
           const items = components.filter(
             (component) =>
               component.type === category.type
@@ -183,9 +183,15 @@ export default function KitBuilder({
             <section
               key={category.type}
               id={`kit-category-${category.type.toLowerCase()}`}
-              className="rounded-2xl bg-white p-6 shadow-sm"
+              className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6"
             >
-              <h2 className="mb-5 text-2xl font-bold text-gray-900">
+              <h2 className="mb-5 flex items-center gap-3 text-2xl font-bold text-earth">
+                <span
+                  aria-hidden="true"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-sm font-bold text-terracotta"
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
                 {category.title}
               </h2>
 
@@ -197,25 +203,39 @@ export default function KitBuilder({
                   return (
                     <div
                       key={component.id}
-                      className="flex flex-col gap-4 border-b border-gray-100 pb-4 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                      className={`flex flex-col gap-4 rounded-xl border p-4 transition-colors sm:flex-row sm:items-center sm:justify-between ${
+                        quantity > 0
+                          ? "border-sage bg-primary-light/50"
+                          : component.stock <= 0
+                            ? "border-border bg-surface-muted/70"
+                            : "border-border bg-surface"
+                      }`}
                     >
                       <div>
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className="font-semibold text-earth">
                           {component.name}
                         </h3>
 
                         {component.description && (
-                          <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
                             {component.description}
                           </p>
                         )}
 
-                        <p className="mt-2 text-sm font-medium text-[#52730E]">
+                        <p className="mt-2 text-sm font-semibold text-primary">
                           {formatPrice(component.price)}
                         </p>
 
-                        <p className="mt-1 text-xs text-gray-500">
-                          Disponibles: {component.stock}
+                        <p
+                          className={`mt-1 text-xs font-medium ${
+                            component.stock > 0
+                              ? "text-text-secondary"
+                              : "text-red-800"
+                          }`}
+                        >
+                          {component.stock > 0
+                            ? `Disponibles: ${component.stock}`
+                            : "Agotado"}
                         </p>
                       </div>
 
@@ -231,12 +251,12 @@ export default function KitBuilder({
                           }
                           disabled={quantity === 0}
                           aria-label={`Quitar una unidad de ${component.name}`}
-                          className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-lg text-gray-800 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-lg text-earth transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           −
                         </button>
 
-                        <span className="w-8 text-center font-semibold text-gray-900">
+                        <span className="w-8 text-center font-semibold text-earth">
                           {quantity}
                         </span>
 
@@ -252,7 +272,7 @@ export default function KitBuilder({
                             quantity >= component.stock
                           }
                           aria-label={`Agregar una unidad de ${component.name}`}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#52730E] text-lg text-white transition-colors hover:bg-[#405a0b] disabled:cursor-not-allowed disabled:opacity-40"
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-lg text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           +
                         </button>
@@ -267,9 +287,9 @@ export default function KitBuilder({
       </div>
 
       {/* Resumen del kit */}
-      <aside className="h-fit rounded-2xl bg-white p-6 shadow-sm lg:sticky lg:top-24">
+      <aside className="h-fit rounded-2xl border border-border bg-surface p-6 shadow-sm lg:sticky lg:top-24">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-earth">
             Tu kit personalizado
           </h2>
 
@@ -289,7 +309,7 @@ export default function KitBuilder({
 
         {/* Componentes seleccionados */}
         {selectedComponents.length === 0 ? (
-          <p className="mt-5 text-sm text-gray-500">
+          <p className="mt-5 text-sm text-text-secondary">
             Selecciona los componentes que deseas
             incluir en tu kit.
           </p>
@@ -302,13 +322,13 @@ export default function KitBuilder({
               return (
                 <li
                   key={component.id}
-                  className="flex justify-between gap-3 text-sm"
+                  className="flex justify-between gap-3 border-b border-border pb-3 text-sm last:border-0 last:pb-0"
                 >
-                  <span className="text-gray-700">
+                  <span className="text-text-secondary">
                     {quantity} × {component.name}
                   </span>
 
-                  <span className="shrink-0 font-semibold text-gray-900">
+                  <span className="shrink-0 font-semibold text-earth">
                     {formatPrice(
                       component.price * quantity
                     )}
@@ -320,23 +340,23 @@ export default function KitBuilder({
         )}
 
         {/* Totales */}
-        <div className="mt-6 border-t border-gray-200 pt-5">
-          <p className="text-sm text-gray-500">
+        <div className="mt-6 border-t border-border pt-5">
+          <p className="text-sm text-text-secondary">
             Componentes seleccionados: {totalUnits}
           </p>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-earth">
               Total estimado
             </span>
 
-            <span className="text-2xl font-bold text-[#52730E]">
+            <span className="text-2xl font-bold text-primary">
               {formatPrice(total)}
             </span>
           </div>
         </div>
 
-        <p className="mt-5 text-xs leading-relaxed text-gray-500">
+        <p className="mt-5 text-xs leading-relaxed text-text-secondary">
           Este es un cálculo preliminar. Los precios
           y existencias se verificarán al confirmar
           el pedido.
@@ -347,7 +367,7 @@ export default function KitBuilder({
             type="button"
             onClick={handleAddToCart}
             disabled={selectedComponents.length === 0}
-            className="w-full rounded-full bg-[#52730E] px-5 py-3 font-semibold text-white transition-colors hover:bg-[#405a0b] disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-full bg-primary px-5 py-3 font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             Agregar kit al carrito
           </button>
@@ -355,7 +375,7 @@ export default function KitBuilder({
           {addedToCart && (
             <p
               role="status"
-              className="text-center text-sm font-medium text-[#52730E]"
+              className="rounded-xl bg-primary-light px-4 py-3 text-center text-sm font-semibold text-primary"
             >
               ¡Kit agregado al carrito correctamente!
             </p>
@@ -366,16 +386,16 @@ export default function KitBuilder({
         {recommendations.length > 0 && (
           <section
             aria-labelledby="kit-recommendations-title"
-            className="mt-6 border-t border-gray-200 pt-5"
+            className="mt-6 border-t border-border pt-5"
           >
             <h3
               id="kit-recommendations-title"
-              className="text-lg font-bold text-gray-900"
+              className="text-lg font-bold text-earth"
             >
               🌱 Recomendaciones para tu kit
             </h3>
 
-            <p className="mt-2 text-xs leading-relaxed text-gray-500">
+            <p className="mt-2 text-xs leading-relaxed text-text-secondary">
               Estas sugerencias son opcionales.
               Puedes personalizar tu kit como prefieras.
             </p>
@@ -396,19 +416,19 @@ export default function KitBuilder({
                   return (
                     <div
                       key={recommendation.id}
-                      className="rounded-xl border border-green-100 bg-[#f7f9f4] p-4"
+                      className="rounded-xl border border-sage bg-primary-light/40 p-4"
                     >
-                      <h4 className="text-sm font-semibold text-[#52730E]">
+                      <h4 className="text-sm font-semibold text-primary">
                         {recommendation.title}
                       </h4>
 
-                      <p className="mt-2 text-xs leading-relaxed text-gray-600">
+                      <p className="mt-2 text-xs leading-relaxed text-text-secondary">
                         {recommendation.message}
                       </p>
 
                       {/* Opciones disponibles */}
                       {suggestedComponents.length > 0 && (
-                        <div className="mt-4 space-y-3 border-t border-green-100 pt-3">
+                        <div className="mt-4 space-y-3 border-t border-sage pt-3">
                           {suggestedComponents.map(
                             (component) => {
                               const quantity =
@@ -424,12 +444,12 @@ export default function KitBuilder({
                                   key={component.id}
                                   className="space-y-2"
                                 >
-                                  <p className="text-xs font-semibold text-gray-800">
+                                  <p className="text-xs font-semibold text-earth">
                                     {component.name}
                                   </p>
 
                                   <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <span className="text-xs text-gray-600">
+                                    <span className="text-xs text-text-secondary">
                                       {formatPrice(
                                         component.price
                                       )}
@@ -446,7 +466,7 @@ export default function KitBuilder({
                                         stockReached
                                       }
                                       aria-label={`Agregar ${component.name} al kit`}
-                                      className="rounded-full bg-[#52730E] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#405a0b] disabled:cursor-not-allowed disabled:opacity-40"
+                                      className="rounded-full bg-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
                                     >
                                       {stockReached
                                         ? "Límite alcanzado"

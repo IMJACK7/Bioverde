@@ -11,9 +11,9 @@ export default function HomePage() {
 
       <Suspense
         fallback={
-          <section className="bg-[#f7f9f4] px-6 py-20">
+          <section className="bg-surface-muted px-6 py-20">
             <div className="mx-auto max-w-7xl">
-              <p className="text-gray-600">
+              <p className="text-text-secondary">
                 Cargando productos destacados...
               </p>
             </div>

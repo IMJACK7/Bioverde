@@ -9,7 +9,8 @@ import {
 import "./globals.css";
 
 import SiteHeader from "@/features/navigation/components/SiteHeader";
-
+import SiteFooter from "@/features/navigation/components/SiteFooter";
+import { Suspense } from "react";
 import {
   CartProvider,
 } from "@/features/cart/context/CartContext";
@@ -43,8 +44,13 @@ export default function RootLayout({
     >
       <body>
         <CartProvider>
-          <SiteHeader />
+          
+          <Suspense fallback={null}>
+            <SiteHeader />
+          </Suspense>
+
           {children}
+          <SiteFooter />
         </CartProvider>
       </body>
     </html>

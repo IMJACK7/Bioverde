@@ -140,21 +140,41 @@ model PreferenceResponse {
   @@index([createdAt])
 }
 
+
+
+
 model Order {
   id String @id @default(uuid())
 
+  // Clave única para evitar pedidos duplicados.
+  idempotencyKey String? @unique
+  requestHash    String?
+
   // Información del cliente.
-  customerName  String
-  customerPhone String
-  municipality  String
+  customerName    String
+  customerPhone   String
+  municipality    String
   deliveryAddress String
-  notes         String?
+  notes           String?
 
   // Información económica.
   subtotal Decimal @db.Decimal(12, 2)
 
-  // Estado inicial del pedido.
+  // Estado del pedido.
   status OrderStatus @default(PENDING)
+
+  // Campo heredado de la confirmación anterior.
+  // Se eliminará después de migrar los pedidos existentes.
+  confirmedAt DateTime?
+
+  // Fecha en que el administrador verificó el pago.
+  paidAt DateTime?
+
+  // Fecha en que el administrador marcó el pedido como entregado.
+completedAt DateTime?
+
+// Fecha en que el administrador canceló un pedido pendiente.
+cancelledAt DateTime?
 
   // Productos y kits del pedido.
   items OrderItem[]
@@ -165,6 +185,9 @@ model Order {
   @@index([status])
   @@index([createdAt])
 }
+
+
+
 
 model OrderItem {
   id      String @id @default(uuid())
@@ -209,4 +232,18 @@ model OrderItemComponent {
 
   @@index([orderItemId])
 }
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  isActive     Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
 

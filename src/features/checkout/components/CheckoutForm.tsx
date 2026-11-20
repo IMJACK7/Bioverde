@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { useCart } from "@/features/cart/context/CartContext";
@@ -19,10 +19,22 @@ type CustomerForm = {
 
 type RegisteredOrder = {
   id: string;
-  status: "PENDING";
+  status: string;
   subtotal: number;
   totalItems: number;
   createdAt: string;
+
+  items: {
+    name: string;
+    variantName: string | null;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    components: {
+      name: string;
+      quantity: number;
+    }[];
+  }[];
 };
 
 type OrderResponse =
@@ -37,6 +49,11 @@ type OrderResponse =
         message: string;
       }>;
     };
+
+type PendingAttempt = {
+  fingerprint: string;
+  idempotencyKey: string;
+};
 
 const initialCustomer: CustomerForm = {
   name: "",
@@ -92,10 +109,25 @@ export default function CheckoutForm() {
   const [whatsAppError, setWhatsAppError] =
     useState<string | null>(null);
 
+  /**
+   * Conserva la clave durante los reintentos
+   * de una misma solicitud.
+   */
+  const pendingAttemptRef =
+    useRef<PendingAttempt | null>(null);
+
+  /**
+   * Evita que dos eventos de envío ejecuten
+   * solicitudes simultáneas desde este formulario.
+   */
+  const submittingRef = useRef(false);
+
   function updateField(
     field: keyof CustomerForm,
     value: string
   ) {
+    if (submittingRef.current) return;
+
     setCustomer((previous) => ({
       ...previous,
       [field]: value,
@@ -113,6 +145,9 @@ export default function CheckoutForm() {
         customerName: customer.name.trim(),
         municipality: customer.municipality.trim(),
         total: registeredOrder.subtotal,
+
+        // Datos registrados por el servidor.
+        items: registeredOrder.items,
       });
 
       window.location.assign(url);
@@ -129,7 +164,7 @@ export default function CheckoutForm() {
     event.preventDefault();
 
     if (
-      isSubmitting ||
+      submittingRef.current ||
       registeredOrder ||
       !isReady ||
       items.length === 0
@@ -137,18 +172,55 @@ export default function CheckoutForm() {
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     setErrors([]);
 
     try {
+      /**
+       * Construir una instantánea de los datos
+       * que se enviarán al servidor.
+       */
+      const orderData = {
+        customer: { ...customer },
+        items: items.map(toOrderItem),
+      };
+
+      /**
+       * La huella local solo identifica cambios
+       * en el formulario. No reemplaza el hash
+       * SHA-256 calculado en el servidor.
+       */
+      const fingerprint = JSON.stringify(orderData);
+
+      /**
+       * Si los datos son idénticos, reutilizar
+       * la clave anterior.
+       *
+       * Si cambiaron, generar una nueva.
+       */
+      if (
+        !pendingAttemptRef.current ||
+        pendingAttemptRef.current.fingerprint !==
+          fingerprint
+      ) {
+        pendingAttemptRef.current = {
+          fingerprint,
+          idempotencyKey: crypto.randomUUID(),
+        };
+      }
+
+      const idempotencyKey =
+        pendingAttemptRef.current.idempotencyKey;
+
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          customer,
-          items: items.map(toOrderItem),
+          ...orderData,
+          idempotencyKey,
         }),
       });
 
@@ -156,49 +228,77 @@ export default function CheckoutForm() {
         (await response.json()) as OrderResponse;
 
       if (!result.success) {
+        const messages =
+          result.errors?.map(
+            (error) => error.message
+          ) ?? [];
+
         setErrors(
-          result.errors?.map((error) => error.message) ??
-            ["No fue posible registrar el pedido."]
+          messages.length > 0
+            ? messages
+            : ["No fue posible registrar el pedido."]
         );
+
         return;
       }
 
+      /**
+       * El servidor pudo crear el pedido
+       * o recuperar uno registrado previamente.
+       */
       setRegisteredOrder(result.data);
     } catch {
+      /**
+       * No sabemos si el servidor alcanzó a
+       * registrar el pedido.
+       *
+       * Por eso NO eliminamos la clave:
+       * el próximo intento debe reutilizarla.
+       */
       setErrors([
-        "No fue posible conectar con el servidor. Inténtalo nuevamente.",
+        "No fue posible completar la solicitud. Inténtalo nuevamente sin modificar los datos para recuperar el mismo pedido si ya fue registrado.",
       ]);
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   }
 
   if (!isReady) {
     return (
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-text-secondary">
         Cargando información del carrito...
       </p>
     );
   }
 
   if (registeredOrder) {
+    const isPending =
+      registeredOrder.status === "PENDING";
+
     return (
       <section
         aria-live="polite"
-        className="rounded-2xl border border-green-200 bg-green-50 p-6 text-green-950"
+        className="rounded-2xl border border-sage bg-primary-light p-6 text-earth"
       >
         <h2 className="text-2xl font-bold">
           Pedido registrado
         </h2>
 
         <p className="mt-3">
-          Tu solicitud fue registrada correctamente.
-          Todavía está pendiente de confirmación.
+          {isPending
+            ? "Tu solicitud fue registrada correctamente. Todavía está pendiente de confirmación."
+            : "Hemos recuperado tu pedido registrado. Consulta su estado actual con BioVerde."}
         </p>
 
         <p className="mt-4 break-all text-sm">
           <strong>Número de pedido:</strong>{" "}
           {registeredOrder.id}
+        </p>
+
+        <p className="mt-2">
+          <strong>Estado:</strong>{" "}
+          {registeredOrder.status}
         </p>
 
         <p className="mt-2">
@@ -214,7 +314,7 @@ export default function CheckoutForm() {
         <button
           type="button"
           onClick={handleWhatsApp}
-          className="mt-6 flex w-full items-center justify-center rounded-xl bg-green-700 px-6 py-4 font-semibold text-white transition hover:bg-green-800"
+          className="mt-6 flex w-full items-center justify-center rounded-xl bg-primary px-6 py-4 font-semibold text-white transition hover:bg-primary-hover"
         >
           Continuar por WhatsApp
         </button>
@@ -228,24 +328,24 @@ export default function CheckoutForm() {
           </p>
         )}
 
-        <p className="mt-4 text-xs text-green-900">
+        <p className="mt-4 text-xs text-text-secondary">
           WhatsApp abrirá una conversación con
           un mensaje preparado. Debes enviarlo
           manualmente para contactar a BioVerde.
-          El pedido todavía no está confirmado,
-          pagado ni reservado.
+          {isPending &&
+            " El pedido todavía no está confirmado, pagado ni reservado."}
         </p>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto max-w-2xl">
-      <h1 className="text-3xl font-bold">
+    <section className="mx-auto max-w-2xl rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-8">
+      <h1 className="text-3xl font-bold text-earth">
         Finalizar pedido
       </h1>
 
-      <p className="mt-2 text-neutral-600">
+      <p className="mt-2 text-text-secondary">
         Completa tus datos para registrar tu
         solicitud de compra en BioVerde.
       </p>
@@ -253,11 +353,12 @@ export default function CheckoutForm() {
       <form
         onSubmit={handleSubmit}
         className="mt-8 space-y-5"
+        aria-busy={isSubmitting}
       >
         <div>
           <label
             htmlFor="checkout-name"
-            className="mb-2 block font-medium"
+            className="mb-2 block font-medium text-earth"
           >
             Nombre completo
           </label>
@@ -269,18 +370,19 @@ export default function CheckoutForm() {
             minLength={3}
             maxLength={120}
             autoComplete="name"
+            disabled={isSubmitting}
             value={customer.name}
             onChange={(event) =>
               updateField("name", event.target.value)
             }
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3"
+            className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-text-primary transition-colors placeholder:text-text-secondary focus:border-primary focus-visible:outline-primary disabled:opacity-60"
           />
         </div>
 
         <div>
           <label
             htmlFor="checkout-phone"
-            className="mb-2 block font-medium"
+            className="mb-2 block font-medium text-earth"
           >
             Teléfono
           </label>
@@ -291,18 +393,19 @@ export default function CheckoutForm() {
             required
             maxLength={20}
             autoComplete="tel"
+            disabled={isSubmitting}
             value={customer.phone}
             onChange={(event) =>
               updateField("phone", event.target.value)
             }
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3"
+            className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-text-primary transition-colors placeholder:text-text-secondary focus:border-primary focus-visible:outline-primary disabled:opacity-60"
           />
         </div>
 
         <div>
           <label
             htmlFor="checkout-municipality"
-            className="mb-2 block font-medium"
+            className="mb-2 block font-medium text-earth"
           >
             Municipio
           </label>
@@ -313,6 +416,7 @@ export default function CheckoutForm() {
             required
             minLength={2}
             maxLength={100}
+            disabled={isSubmitting}
             value={customer.municipality}
             onChange={(event) =>
               updateField(
@@ -320,14 +424,14 @@ export default function CheckoutForm() {
                 event.target.value
               )
             }
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3"
+            className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-text-primary transition-colors placeholder:text-text-secondary focus:border-primary focus-visible:outline-primary disabled:opacity-60"
           />
         </div>
 
         <div>
           <label
             htmlFor="checkout-address"
-            className="mb-2 block font-medium"
+            className="mb-2 block font-medium text-earth"
           >
             Dirección de entrega
           </label>
@@ -339,6 +443,7 @@ export default function CheckoutForm() {
             minLength={5}
             maxLength={200}
             autoComplete="street-address"
+            disabled={isSubmitting}
             value={customer.deliveryAddress}
             onChange={(event) =>
               updateField(
@@ -346,14 +451,14 @@ export default function CheckoutForm() {
                 event.target.value
               )
             }
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3"
+            className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-text-primary transition-colors placeholder:text-text-secondary focus:border-primary focus-visible:outline-primary disabled:opacity-60"
           />
         </div>
 
         <div>
           <label
             htmlFor="checkout-notes"
-            className="mb-2 block font-medium"
+            className="mb-2 block font-medium text-earth"
           >
             Observaciones (opcional)
           </label>
@@ -362,24 +467,25 @@ export default function CheckoutForm() {
             id="checkout-notes"
             rows={4}
             maxLength={500}
+            disabled={isSubmitting}
             value={customer.notes}
             onChange={(event) =>
               updateField("notes", event.target.value)
             }
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3"
+            className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-text-primary transition-colors placeholder:text-text-secondary focus:border-primary focus-visible:outline-primary disabled:opacity-60"
           />
         </div>
 
-        <div className="rounded-xl bg-neutral-100 p-5">
-          <p className="text-sm text-neutral-600">
+        <div className="rounded-xl border border-border bg-surface-muted p-5">
+          <p className="text-sm text-text-secondary">
             Total estimado del carrito
           </p>
 
-          <p className="mt-1 text-2xl font-bold">
+          <p className="mt-1 text-2xl font-bold text-primary">
             {money(totalPrice)}
           </p>
 
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-text-secondary">
             El servidor verificará los precios y
             las existencias antes de registrar
             el pedido.
@@ -408,7 +514,7 @@ export default function CheckoutForm() {
           disabled={
             isSubmitting || items.length === 0
           }
-          className="w-full rounded-xl bg-green-700 px-6 py-4 font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-xl bg-primary px-6 py-4 font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting
             ? "Registrando pedido..."

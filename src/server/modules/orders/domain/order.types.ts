@@ -51,13 +51,20 @@ export interface OrderCustomerInput {
   notes?: string;
 }
 
+
 /**
  * Solicitud de pedido recibida por el servidor.
+ *
+ * idempotencyKey identifica una operación de compra.
+ * Los reintentos de esa misma operación deben
+ * reutilizar exactamente la misma clave.
  */
 export interface CreateOrderInput {
+  idempotencyKey: string;
   customer: OrderCustomerInput;
   items: OrderItemInput[];
 }
+
 
 /**
  * Componente validado contra PostgreSQL.

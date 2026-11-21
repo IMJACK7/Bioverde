@@ -82,16 +82,3 @@ export default async function BuildYourKitPage() {
     </main>
   );
 }
-
-fetch("http://localhost:3000/api/orders", {
-  "headers": {
-    "accept": "*/*",
-    "accept-language": "en-US,en;q=0.5",
-    "content-type": "application/json"
-  },
-  "referrer": "http://localhost:3000/checkout",
-  "body": "{\"customer\":{\"name\":\"Alexander\",\"phone\":\"3146201723\",\"municipality\":\"Anserma \",\"deliveryAddress\":\"Sector la bohemia \",\"notes\":\"\"},\"items\":[{\"type\":\"PREBUILT_KIT\",\"productId\":\"da7c3a90-09e9-4938-a804-099cdc7d02bb\",\"variantId\":\"fa852bb8-1ea4-45d1-a69b-e5c38af0925f\",\"quantity\":4},{\"type\":\"PREBUILT_KIT\",\"productId\":\"34fc56f5-6ae7-48ff-afac-e88a499b0201\",\"variantId\":\"9081bc38-a75c-4977-8da1-1d19e5133966\",\"quantity\":3},{\"type\":\"CUSTOM_KIT\",\"quantity\":1,\"components\":[{\"componentId\":\"efa6e9cb-ea3c-42f4-b040-0853c71146d1\",\"quantity\":1},{\"componentId\":\"2b4b6860-b21c-41e0-bc2d-e3421fb19868\",\"quantity\":1},{\"componentId\":\"fb37fd46-6525-4466-b467-3f3b8904baad\",\"quantity\":1},{\"componentId\":\"96f65629-464f-4e13-b359-789bb2bcca47\",\"quantity\":1}]}],\"idempotencyKey\":\"61675b9d-582f-4ad0-8d4d-efd3196de2f8\"}",
-  "method": "POST",
-  "mode": "cors",
-  "credentials": "omit"
-});

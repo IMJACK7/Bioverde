@@ -1,6 +1,4 @@
-
 import { prisma } from "@/server/db/prisma";
-
 import type {
   KitComponent,
   KitComponentRepository,
@@ -8,14 +6,25 @@ import type {
 
 import type { Prisma } from "@/generated/prisma/client";
 
-// Tipo del registro obtenido desde Prisma.
-type KitComponentRecord =
-  Prisma.KitComponentGetPayload<{}>;
+type KitComponentRecord = Prisma.KitComponentGetPayload<{
+  include: {
+    productVariant: {
+      include: {
+        product: true;
+      };
+    };
+  };
+}>;
 
-// Convierte el registro de Prisma al modelo de dominio.
 function toDomainKitComponent(
   component: KitComponentRecord
 ): KitComponent {
+  const linkedVariant = component.productVariant;
+
+  const effectiveStock = linkedVariant
+    ? linkedVariant.stock
+    : component.stock;
+
   return {
     id: component.id,
     name: component.name,
@@ -23,7 +32,7 @@ function toDomainKitComponent(
     description: component.description,
     type: component.type,
     price: component.price.toNumber(),
-    stock: component.stock,
+    stock: effectiveStock,
   };
 }
 
@@ -34,17 +43,40 @@ export class PrismaKitComponentRepository
     const components = await prisma.kitComponent.findMany({
       where: {
         isActive: true,
-        stock: {
-          gt: 0,
+        OR: [
+          {
+            productVariantId: null,
+            stock: {
+              gt: 0,
+            },
+          },
+          {
+            productVariant: {
+              is: {
+                isActive: true,
+                stock: {
+                  gt: 0,
+                },
+                product: {
+                  is: {
+                    isActive: true,
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        productVariant: {
+          include: {
+            product: true,
+          },
         },
       },
       orderBy: [
-        {
-          type: "asc",
-        },
-        {
-          name: "asc",
-        },
+        { type: "asc" },
+        { name: "asc" },
       ],
     });
 

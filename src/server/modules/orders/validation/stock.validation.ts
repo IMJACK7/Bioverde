@@ -1,4 +1,3 @@
-
 import type {
   OrderValidationRepository,
 } from "../domain/order-validation.repository";
@@ -27,11 +26,15 @@ export type StockValidationResult =
     };
 
 /**
- * Comprueba las existencias necesarias
- * para todos los artículos del carrito.
+ * Valida las existencias acumuladas del pedido.
  *
- * No descuenta inventario.
- * No registra pedidos.
+ * Los componentes vinculados a una variante
+ * comercial comparten su inventario.
+ *
+ * Los componentes independientes utilizan
+ * sus propias existencias.
+ *
+ * No modifica inventario.
  */
 export async function validateStock(
   input: StockValidationInput,
@@ -39,21 +42,21 @@ export async function validateStock(
 ): Promise<StockValidationResult> {
   const errors: OrderValidationError[] = [];
 
-  // Verificar productos y variantes.
-  for (const [key, required] of input.productDemand) {
-    const available = input.productStocks.get(key) ?? 0;
+  // Copiar las demandas y existencias del catálogo.
+  const combinedDemand = new Map(input.productDemand);
+  const combinedStocks = new Map(input.productStocks);
 
-    if (required > available) {
-      errors.push(
-        createOrderValidationError(
-          "INSUFFICIENT_STOCK",
-          `Las existencias del artículo ${key} no son suficientes.`
-        )
-      );
+  // Demanda de componentes con inventario independiente.
+  const independentComponents = new Map<
+    string,
+    {
+      name: string;
+      required: number;
+      stock: number;
     }
-  }
+  >();
 
-  // Verificar componentes de kits personalizados.
+  // Procesar los componentes de kits personalizados.
   for (const [componentId, required] of input.componentDemand) {
     const component = await repository.findComponentById(
       componentId
@@ -70,7 +73,63 @@ export async function validateStock(
       continue;
     }
 
-    if (required > component.stock) {
+    // Componente vinculado a una variante comercial.
+    if (component.productVariantId) {
+      const inventoryKey =
+        `variant:${component.productVariantId}`;
+
+      const previousDemand =
+        combinedDemand.get(inventoryKey) ?? 0;
+
+      const totalDemand = previousDemand + required;
+
+      if (!Number.isSafeInteger(totalDemand)) {
+        errors.push(
+          createOrderValidationError(
+            "INVALID_QUANTITY",
+            "La cantidad solicitada supera el límite permitido."
+          )
+        );
+
+        continue;
+      }
+
+      combinedDemand.set(inventoryKey, totalDemand);
+
+      // La variante puede no haberse comprado
+      // individualmente en este pedido.
+      if (!combinedStocks.has(inventoryKey)) {
+        combinedStocks.set(inventoryKey, component.stock);
+      }
+
+      continue;
+    }
+
+    // Componente con inventario independiente.
+    independentComponents.set(componentId, {
+      name: component.name,
+      required,
+      stock: component.stock,
+    });
+  }
+
+  // Validar la demanda total de productos y variantes.
+  for (const [inventoryKey, required] of combinedDemand) {
+    const available = combinedStocks.get(inventoryKey) ?? 0;
+
+    if (required > available) {
+      errors.push(
+        createOrderValidationError(
+          "INSUFFICIENT_STOCK",
+          `No hay suficientes existencias para el artículo ${inventoryKey}.`
+        )
+      );
+    }
+  }
+
+  // Validar los componentes independientes.
+  for (const component of independentComponents.values()) {
+    if (component.required > component.stock) {
       errors.push(
         createOrderValidationError(
           "INSUFFICIENT_STOCK",

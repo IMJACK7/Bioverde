@@ -5,20 +5,18 @@ type OrderStatusBadgeProps = {
   status: OrderStatus;
 };
 
+type StatusAppearance = {
+  label: string;
+  className: string;
+};
+
 const statusConfig: Record<
   OrderStatus,
-  {
-    label: string;
-    className: string;
-  }
+  StatusAppearance
 > = {
   PENDING: {
     label: "Pendiente",
     className: "bg-amber-100 text-amber-800",
-  },
-  CONFIRMED: {
-    label: "Confirmado",
-    className: "bg-blue-100 text-blue-800",
   },
   PAID: {
     label: "Pagado",

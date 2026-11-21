@@ -9,14 +9,15 @@ import type {
   OrderPaymentResult,
 } from "../domain/order-payment.repository";
 
-import { OrderConfirmationError } from
-  "../domain/order-confirmation.errors";
+import { OrderPaymentError } from
+  "../domain/order-payment.errors";
 
 import { calculateInventoryDemand } from
   "../confirmation/inventory-demand";
 
 import { deductInventory } from
   "../confirmation/inventory-deduction";
+
 
 const MAX_RETRIES = 3;
 
@@ -52,7 +53,7 @@ export class PrismaOrderPaymentRepository
                 select: { id: true },
               });
 
-              throw new OrderConfirmationError(
+              throw new OrderPaymentError(
                 existing
                   ? "INVALID_ORDER_STATUS"
                   : "ORDER_NOT_FOUND",
@@ -75,7 +76,7 @@ export class PrismaOrderPaymentRepository
             });
 
             if (!existingOrder) {
-              throw new OrderConfirmationError(
+              throw new OrderPaymentError(
                 "ORDER_NOT_FOUND",
                 "El pedido no existe."
               );
@@ -88,7 +89,7 @@ export class PrismaOrderPaymentRepository
               }
 
               if (!item.productId) {
-                throw new OrderConfirmationError(
+                throw new OrderPaymentError(
                   "INVALID_ORDER_DATA",
                   "Una variante no tiene un producto asociado."
                 );
@@ -103,8 +104,8 @@ export class PrismaOrderPaymentRepository
               });
 
               if (!variant) {
-                throw new OrderConfirmationError(
-                  "INVENTORY_ITEM_NOT_FOUND",
+                throw new OrderPaymentError(
+                  "INVALID_ORDER_DATA",
                   "Una variante ya no corresponde al producto registrado."
                 );
               }
@@ -129,8 +130,8 @@ export class PrismaOrderPaymentRepository
             });
 
             if (!paid.paidAt) {
-              throw new OrderConfirmationError(
-                "INVALID_ORDER_DATA",
+              throw new OrderPaymentError(
+                "INVENTORY_ITEM_NOT_FOUND",
                 "No se pudo registrar la fecha de pago."
               );
             }
@@ -155,7 +156,7 @@ export class PrismaOrderPaymentRepository
         };
       } catch (error) {
         // Errores de negocio: no reintentar.
-        if (error instanceof OrderConfirmationError) {
+        if (error instanceof OrderPaymentError) {
           return {
             success: false,
             code: error.code,

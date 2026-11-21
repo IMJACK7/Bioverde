@@ -1,4 +1,3 @@
-
 import "server-only";
 
 import { prisma } from "@/server/db/prisma";
@@ -24,17 +23,17 @@ export class PrismaOrderValidationRepository
     productId: string
   ): Promise<OrderProductRecord | null> {
     const product = await prisma.product.findUnique({
-  where: {
-    id: productId,
-  },
-  include: {
-    variants: {
-      select: {
-        id: true,
+      where: {
+        id: productId,
       },
-    },
-  },
-});
+      include: {
+        variants: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
 
     if (!product) {
       return null;
@@ -54,21 +53,20 @@ export class PrismaOrderValidationRepository
   /**
    * Consultar una variante y su receta.
    *
-   * La receta permite conocer qué componentes
-   * necesita un kit prediseñado.
+   * Los kits prediseñados conservan
+   * su inventario independiente.
    */
   async findVariantById(
     variantId: string
   ): Promise<OrderVariantRecord | null> {
-    const variant =
-      await prisma.productVariant.findUnique({
-        where: {
-          id: variantId,
-        },
-        include: {
-          recipeItems: true,
-        },
-      });
+    const variant = await prisma.productVariant.findUnique({
+      where: {
+        id: variantId,
+      },
+      include: {
+        recipeItems: true,
+      },
+    });
 
     if (!variant) {
       return null;
@@ -81,38 +79,64 @@ export class PrismaOrderValidationRepository
       price: Number(variant.price),
       stock: variant.stock,
       isActive: variant.isActive,
-      recipeComponents: variant.recipeItems.map(
-        (item) => ({
-          componentId: item.componentId,
-          quantity: item.quantity,
-        })
-      ),
+      recipeComponents: variant.recipeItems.map((item) => ({
+        componentId: item.componentId,
+        quantity: item.quantity,
+      })),
     };
   }
 
   /**
    * Consultar un componente del inventario.
+   *
+   * Si está vinculado a una variante comercial,
+   * utiliza el stock de esa variante.
+   *
+   * Si no está vinculado, utiliza su propio stock.
    */
   async findComponentById(
     componentId: string
   ): Promise<OrderComponentRecord | null> {
-    const component =
-      await prisma.kitComponent.findUnique({
-        where: {
-          id: componentId,
+    const component = await prisma.kitComponent.findUnique({
+      where: {
+        id: componentId,
+      },
+      include: {
+        productVariant: {
+          include: {
+            product: {
+              select: {
+                isActive: true,
+              },
+            },
+          },
         },
-      });
+      },
+    });
 
     if (!component) {
       return null;
     }
 
-    return {
+    const linkedVariant = component.productVariant;
+
+    const effectiveStock = linkedVariant
+      ? linkedVariant.stock
+      : component.stock;
+
+    const effectiveIsActive = linkedVariant
+      ? component.isActive &&
+        linkedVariant.isActive &&
+        linkedVariant.product.isActive
+      : component.isActive;
+
+        return {
       id: component.id,
       name: component.name,
       price: Number(component.price),
-      stock: component.stock,
-      isActive: component.isActive,
+      stock: effectiveStock,
+      isActive: effectiveIsActive,
+      productVariantId: component.productVariantId,
     };
   }
 }

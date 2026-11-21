@@ -1,8 +1,11 @@
 
-import type { OrderItemType } from "@/generated/prisma/enums";
 
-import { OrderConfirmationError } from
-  "../domain/order-confirmation.errors";
+import type { OrderItemType } from
+  "@/generated/prisma/enums";
+
+import { OrderPaymentError } from
+  "../domain/order-payment.errors";
+
 
 /**
  * Información necesaria de un componente
@@ -48,8 +51,8 @@ function addDemand(
     !Number.isSafeInteger(quantity) ||
     quantity <= 0
   ) {
-    throw new OrderConfirmationError(
-      "INVALID_ORDER_DATA",
+    throw new OrderPaymentError(
+      "INVENTORY_ITEM_NOT_FOUND",
       "El pedido contiene cantidades inválidas."
     );
   }
@@ -57,8 +60,8 @@ function addDemand(
   const total = (demand.get(id) ?? 0) + quantity;
 
   if (!Number.isSafeInteger(total)) {
-    throw new OrderConfirmationError(
-      "INVALID_ORDER_DATA",
+    throw new OrderPaymentError(
+      "INVENTORY_ITEM_NOT_FOUND",
       "La cantidad solicitada supera el límite permitido."
     );
   }
@@ -76,8 +79,8 @@ export function calculateInventoryDemand(
   items: InventoryOrderItem[]
 ): InventoryDemand {
   if (items.length === 0) {
-    throw new OrderConfirmationError(
-      "INVALID_ORDER_DATA",
+    throw new OrderPaymentError(
+      "INVENTORY_ITEM_NOT_FOUND",
       "El pedido no contiene artículos."
     );
   }
@@ -93,23 +96,23 @@ export function calculateInventoryDemand(
       !Number.isSafeInteger(item.quantity) ||
       item.quantity <= 0
     ) {
-      throw new OrderConfirmationError(
-        "INVALID_ORDER_DATA",
+      throw new OrderPaymentError(
+        "INVENTORY_ITEM_NOT_FOUND",
         "El pedido contiene cantidades inválidas."
       );
     }
 
     if (item.type === "CUSTOM_KIT") {
       if (item.components.length === 0) {
-        throw new OrderConfirmationError(
-          "INVALID_ORDER_DATA",
+        throw new OrderPaymentError(
+          "INVENTORY_ITEM_NOT_FOUND",
           "Un kit personalizado no tiene componentes."
         );
       }
 
       for (const component of item.components) {
         if (!component.componentId) {
-          throw new OrderConfirmationError(
+          throw new OrderPaymentError(
             "INVENTORY_ITEM_NOT_FOUND",
             "Un componente del pedido ya no está disponible."
           );
@@ -129,7 +132,7 @@ export function calculateInventoryDemand(
     }
 
     if (!item.productId) {
-      throw new OrderConfirmationError(
+      throw new OrderPaymentError(
         "INVENTORY_ITEM_NOT_FOUND",
         "Un producto del pedido ya no está disponible."
       );
@@ -155,8 +158,8 @@ export function calculateInventoryDemand(
       continue;
     }
 
-    throw new OrderConfirmationError(
-      "INVALID_ORDER_DATA",
+      throw new OrderPaymentError(
+      "INVENTORY_ITEM_NOT_FOUND",
       "Un kit prearmado no tiene una variante válida."
     );
   }

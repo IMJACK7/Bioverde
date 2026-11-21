@@ -13,18 +13,20 @@ const adminSections = [
     href: "/admin/pedidos",
     available: true,
   },
+ 
   {
     title: "Inventario",
-    description: "Administrar existencias y disponibilidad.",
+    description: "Consultar existencias y disponibilidad.",
     href: "/admin/inventario",
-    available: false,
+    available: true,
   },
+
   {
-    title: "Productos",
-    description: "Gestionar el catálogo de BioVerde.",
-    href: "/admin/productos",
-    available: false,
-  },
+  title: "Productos",
+  description: "Consultar y gestionar el catálogo de BioVerde.",
+  href: "/admin/productos",
+  available: true,
+},
 ] as const;
 
 async function logout() {

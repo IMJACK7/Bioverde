@@ -1,4 +1,3 @@
-
 /**
  * Contratos de consulta para validar pedidos.
  *
@@ -38,6 +37,15 @@ export interface OrderComponentRecord {
   price: number;
   stock: number;
   isActive: boolean;
+
+  /**
+   * Variante comercial cuyo inventario comparte
+   * este componente.
+   *
+   * null significa que el componente administra
+   * sus propias existencias.
+   */
+  productVariantId: string | null;
 }
 
 /**

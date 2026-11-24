@@ -11,7 +11,7 @@ export default function HeroSection() {
       <div className="relative mx-auto w-full max-w-[1600px]">
         {/* Banner principal */}
         <Image
-          src="/images/banners/bioverde-hero.jpeg"
+          src="/images/banners/bioverde-hero1.png"
           alt="BioVerde: Cultiva tu propio alimento en casa. Kits de huertos ecológicos para una vida más sana y natural."
           width={1600}
           height={640}
